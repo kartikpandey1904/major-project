@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Voice Translator</title>
+    <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}" type="image/x-icon"/>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f9;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        .container {
+            width: 400px;
+            background-color: #fff;
+            padding: 20px;
+            box-shadow: 0px 0px 15px rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        h1 {
+            color: #333;
+            font-size: 24px;
+            margin-bottom: 20px;
+        }
+
+        label {
+            font-size: 16px;
+            color: #555;
+            display: block;
+            margin-bottom: 8px;
+        }
+
+        select {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 20px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+
+        button {
+            padding: 10px 15px;
+            background-color: #5c6bc0;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        button:hover {
+            background-color: #3f51b5;
+        }
+
+        .loading {
+            display: none;
+            margin-top: 10px;
+            font-size: 14px;
+            color: #ff5722;
+        }
+
+        #translated-text,
+        #recognized-text {
+            margin-top: 20px;
+            font-size: 16px;
+            color: #333;
+            background-color: #f1f1f1;
+            padding: 10px;
+            border-radius: 5px;
+        }
+
+        footer {
+            margin-top: 20px;
+            font-size: 12px;
+            color: #888;
+        }
+    </style>
+
+    <script>
+        let recognition;
+
+        function initSpeechRecognition() {
+            if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+                recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+                recognition.lang = 'en-US';
+                recognition.interimResults = false;
+                recognition.onresult = function (event) {
+                    const transcript = event.results[0][0].transcript;
+                    document.getElementById('recognized-text').innerText = "Recognized Text: " + transcript;
+                    sendToServer(transcript);
+                };
+                recognition.onerror = function (event) {
+                    alert('Speech recognition error: ' + event.error);
+                };
+            } else {
+                alert("Sorry, your browser doesn't support speech recognition.");
+            }
+        }
+
+        function startRecognition() {
+            recognition.start();
+            document.getElementById('loading').style.display = "block";
+        }
+
+        function sendToServer(query) {
+            const toLang = document.getElementById('lang-select').value.toLowerCase();
+
+            fetch('/translate', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    query: query,
+                    to_lang: toLang,
+                }),
+            })
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('loading').style.display = "none";
+                    if (data.error) {
+                        alert(data.error);
+                    } else {
+                        document.getElementById('translated-text').innerText = "Translated Text: " + data.translated_text;
+                        const audio = new Audio(data.audio_file);
+                        audio.play();
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    document.getElementById('loading').style.display = "none";
+                });
+        }
+
+        window.onload = initSpeechRecognition;
+    </script>
+</head>
+
+<body>
+    <div class="container">
+        <h1>Voice Translator</h1>
+
+        <label for="lang-select">Select destination language:</label>
+        <select id="lang-select">
+            <option value="hindi">Hindi</option>
+            <option value="spanish">Spanish</option>
+            <option value="french">French</option>
+            <option value="german">German</option>
+            <option value="japanese">Japanese</option>
+            <option value="russian">Russian</option>
+            <option value="chinese (simplified)">Chinese (Simplified)</option>
+            <option value="arabic">Arabic</option>
+            <option value="portuguese">Portuguese</option>
+            <option value="bengali">Bengali</option>
+            <option value="urdu">Urdu</option>
+            <option value="tamil">Tamil</option>
+            <option value="telugu">Telugu</option>
+            <option value="korean">Korean</option>
+            <!-- Add more as needed -->
+        </select>
+
+        <button onclick="startRecognition()">Start Speaking</button>
+
+        <p id="loading" class="loading">Processing your voice...</p>
+
+        <div id="recognized-text"></div>
+        <div id="translated-text"></div>
+
+        <footer>
+            <p>Powered by Offline TTS and Web Speech API.</p>
+        </footer>
+    </div>
+</body>
+
+</html>
